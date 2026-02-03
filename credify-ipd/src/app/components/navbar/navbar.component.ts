@@ -31,7 +31,11 @@ import { MatIconModule } from '@angular/material/icon';
           </a>
           <a mat-button routerLink="/assess" routerLinkActive="active">
             <mat-icon>assignment</mat-icon>
-            Assess Resume
+            Single Assessment
+          </a>
+          <a mat-button routerLink="/batch" routerLinkActive="active">
+            <mat-icon>upload_file</mat-icon>
+            Batch Upload
           </a>
         </nav>
       </div>
