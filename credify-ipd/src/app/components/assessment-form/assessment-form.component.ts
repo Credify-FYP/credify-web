@@ -1,6 +1,3 @@
-// src/app/components/assessment-form/assessment-form.component.ts
-// UPDATED VERSION - Replace your existing file
-
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
