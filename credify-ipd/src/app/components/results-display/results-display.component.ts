@@ -28,11 +28,12 @@ import { AssessmentResult } from '../../models/resume.model';
       </mat-card-header>
 
       <mat-card-content>
-        <!-- Overall Score Section -->
+
+        <!-- Score / Label Section -->
         <div class="score-section">
-          <div class="score-display" [ngClass]="getScoreClass()">
-            <div class="score-value">{{ result.credibility_score.toFixed(1) }}</div>
-            <div class="score-label">Credibility Score</div>
+          <div class="score-display" [ngClass]="getLabelClass()">
+            <div class="score-value">{{ (result.confidence_score * 100).toFixed(0) }}%</div>
+            <div class="score-label">Confidence</div>
           </div>
 
           <div class="score-details">
@@ -41,10 +42,20 @@ import { AssessmentResult } from '../../models/resume.model';
                 <mat-icon>{{ getLabelIcon() }}</mat-icon>
                 {{ result.credibility_label }}
               </mat-chip>
-              <mat-chip>
-                Confidence: {{ result.confidence }}
-              </mat-chip>
+              <mat-chip>ID: {{ result.resume_id }}</mat-chip>
             </mat-chip-set>
+
+            <!-- Class probability bars -->
+            <div class="prob-bars">
+              <div class="prob-row" *ngFor="let cls of ['credible','suspicious','false']">
+                <span class="prob-name">{{ cls | titlecase }}</span>
+                <div class="prob-track">
+                  <div class="prob-fill" [ngClass]="'fill-'+cls"
+                    [style.width.%]="getScore(cls) * 100"></div>
+                </div>
+                <span class="prob-pct">{{ (getScore(cls) * 100).toFixed(1) }}%</span>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -52,261 +63,135 @@ import { AssessmentResult } from '../../models/resume.model';
 
         <!-- Signal Breakdown -->
         <div class="signals-section">
-          <h3>Signal Breakdown</h3>
-
+          <h3>MSCA Signal Breakdown</h3>
           <div class="signals-list">
-            <div class="signal-item">
+
+            <!-- Evidence Verification -->
+            <div class="signal-item" [ngClass]="result.signal_breakdown.evidence_verification.inflated_claims > 0 ? 'warn' :
+              result.signal_breakdown.evidence_verification.has_projects ? 'ok' : 'warn'">
               <div class="signal-header">
                 <mat-icon>verified</mat-icon>
                 <span class="signal-name">Evidence Verification</span>
-                <span class="signal-score">{{ result.signals.evidence_score.toFixed(1) }}%</span>
               </div>
-              <div class="signal-progress">
-                <div class="progress-bar" [style.width.%]="result.signals.evidence_score"></div>
+              <div class="signal-values">
+                <span>Projects: <b>{{ result.signal_breakdown.evidence_verification.has_projects ? 'Present' : 'Missing' }}</b></span>
+                <span>Inflated Claims: <b>{{ result.signal_breakdown.evidence_verification.inflated_claims }}</b></span>
               </div>
-              <p class="signal-detail">{{ result.details.evidence }}</p>
             </div>
 
-            <div class="signal-item">
+            <!-- Timeline Validation -->
+            <div class="signal-item"
+              [ngClass]="result.signal_breakdown.timeline_validation.timeline_overlap ||
+                         result.signal_breakdown.timeline_validation.future_grad_year ? 'bad' : 'ok'">
               <div class="signal-header">
-                <mat-icon>schedule</mat-icon>
+                <mat-icon>timeline</mat-icon>
                 <span class="signal-name">Timeline Validation</span>
-                <span class="signal-score">{{ result.signals.timeline_score.toFixed(1) }}%</span>
               </div>
-              <div class="signal-progress">
-                <div class="progress-bar" [style.width.%]="result.signals.timeline_score"></div>
+              <div class="signal-values">
+                <span>Date Overlap: <b>{{ result.signal_breakdown.timeline_validation.timeline_overlap ? 'Detected' : 'None' }}</b></span>
+                <span>Future Grad: <b>{{ result.signal_breakdown.timeline_validation.future_grad_year ? 'Yes' : 'No' }}</b></span>
               </div>
-              <p class="signal-detail">{{ result.details.timeline }}</p>
             </div>
 
-            <div class="signal-item">
+            <!-- Complexity Alignment -->
+            <div class="signal-item neutral">
               <div class="signal-header">
-                <mat-icon>speed</mat-icon>
+                <mat-icon>psychology</mat-icon>
                 <span class="signal-name">Complexity Alignment</span>
-                <span class="signal-score">{{ result.signals.complexity_score.toFixed(1) }}%</span>
               </div>
-              <div class="signal-progress">
-                <div class="progress-bar" [style.width.%]="result.signals.complexity_score"></div>
+              <div class="signal-values">
+                <span>Skill Count: <b>{{ result.signal_breakdown.complexity_alignment.skill_count }}</b></span>
+                <span>Skills/Year: <b>{{ result.signal_breakdown.complexity_alignment.skill_per_year.toFixed(2) }}</b></span>
               </div>
-              <p class="signal-detail">{{ result.details.complexity }}</p>
             </div>
 
-            <div class="signal-item">
+            <!-- Anomaly Detection -->
+            <div class="signal-item"
+              [ngClass]="result.signal_breakdown.anomaly_detection.buzzword_count > 2 ? 'warn' : 'ok'">
               <div class="signal-header">
-                <mat-icon>search</mat-icon>
+                <mat-icon>radar</mat-icon>
                 <span class="signal-name">Anomaly Detection</span>
-                <span class="signal-score">{{ result.signals.anomaly_score.toFixed(1) }}%</span>
               </div>
-              <div class="signal-progress">
-                <div class="progress-bar" [style.width.%]="result.signals.anomaly_score"></div>
+              <div class="signal-values">
+                <span>Buzzwords: <b>{{ result.signal_breakdown.anomaly_detection.buzzword_count }}</b></span>
+                <span>Job Count: <b>{{ result.signal_breakdown.anomaly_detection.job_count }}</b></span>
               </div>
-              <p class="signal-detail">{{ result.details.anomaly }}</p>
             </div>
+
           </div>
         </div>
 
-        <!-- Resume Info -->
         <mat-divider></mat-divider>
+
         <div class="resume-info">
           <p><strong>Resume ID:</strong> {{ result.resume_id }}</p>
-          <p><strong>Candidate:</strong> {{ result.name }}</p>
           <p><strong>Assessed:</strong> {{ result.timestamp | date:'medium' }}</p>
         </div>
+
       </mat-card-content>
     </mat-card>
   `,
   styles: [`
-    .results-card {
-      margin-top: 24px;
-      animation: slideIn 0.3s ease-out;
-    }
+    .results-card { margin-top: 24px; animation: slideIn 0.3s ease-out; }
+    @keyframes slideIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    mat-card-title { display:flex; align-items:center; gap:8px; color:#1976d2; }
 
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(20px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
+    .score-section { display:flex; align-items:flex-start; gap:32px; margin:24px 0; }
+    .score-display { text-align:center; padding:24px; border-radius:12px; min-width:130px; color:white; }
+    .score-display.credible  { background:linear-gradient(135deg,#2e7d32,#43a047); }
+    .score-display.suspicious{ background:linear-gradient(135deg,#e65100,#fb8c00); }
+    .score-display.false     { background:linear-gradient(135deg,#b71c1c,#e53935); }
+    .score-value { font-size:42px; font-weight:700; line-height:1; }
+    .score-label { font-size:13px; opacity:0.9; margin-top:6px; }
+    .score-details { flex:1; }
 
-    mat-card-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: #1976d2;
-    }
+    mat-chip.credible   { background:#e8f5e9!important; color:#2e7d32!important; }
+    mat-chip.suspicious { background:#fff3e0!important; color:#e65100!important; }
+    mat-chip.false      { background:#ffebee!important; color:#c62828!important; }
 
-    .score-section {
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      margin: 24px 0;
-    }
+    .prob-bars { margin-top:16px; display:flex; flex-direction:column; gap:10px; }
+    .prob-row  { display:flex; align-items:center; gap:10px; }
+    .prob-name { width:90px; font-size:0.85rem; font-weight:600; color:#555; }
+    .prob-track{ flex:1; height:10px; background:#e0e0e0; border-radius:5px; overflow:hidden; }
+    .prob-fill { height:100%; border-radius:5px; transition:width 0.5s ease; }
+    .fill-credible   { background:linear-gradient(90deg,#43a047,#66bb6a); }
+    .fill-suspicious { background:linear-gradient(90deg,#ef6c00,#ffa726); }
+    .fill-false      { background:linear-gradient(90deg,#c62828,#ef5350); }
+    .prob-pct  { width:45px; text-align:right; font-size:0.85rem; font-weight:600; color:#333; }
 
-    .score-display {
-      text-align: center;
-      padding: 24px;
-      border-radius: 12px;
-      min-width: 180px;
-    }
+    mat-divider { margin:20px 0; }
+    .signals-section h3 { color:#424242; margin-bottom:16px; }
+    .signals-list { display:flex; flex-direction:column; gap:12px; }
+    .signal-item { padding:14px; border-radius:8px; border-left:4px solid; }
+    .signal-item.ok      { background:#f1f8e9; border-color:#43a047; }
+    .signal-item.warn    { background:#fff8e1; border-color:#fb8c00; }
+    .signal-item.bad     { background:#ffebee; border-color:#e53935; }
+    .signal-item.neutral { background:#e8eaf6; border-color:#3949ab; }
+    .signal-header { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .signal-header mat-icon { color:#1976d2; }
+    .signal-name { font-weight:600; color:#424242; }
+    .signal-values { display:flex; gap:24px; font-size:0.88rem; color:#555; }
 
-    .score-display.high {
-      background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
-      color: white;
-    }
-
-    .score-display.medium {
-      background: linear-gradient(135deg, #ff9800 0%, #ffb74d 100%);
-      color: white;
-    }
-
-    .score-display.low {
-      background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
-      color: white;
-    }
-
-    .score-value {
-      font-size: 48px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .score-label {
-      font-size: 14px;
-      opacity: 0.9;
-      margin-top: 8px;
-    }
-
-    .score-details {
-      flex: 1;
-    }
-
-    mat-chip-set {
-      display: flex;
-      gap: 8px;
-    }
-
-    mat-chip {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    mat-chip.credible {
-      background-color: #e8f5e9;
-      color: #2e7d32;
-    }
-
-    mat-chip.suspicious {
-      background-color: #fff3e0;
-      color: #ef6c00;
-    }
-
-    mat-chip.false {
-      background-color: #ffebee;
-      color: #c62828;
-    }
-
-    mat-divider {
-      margin: 24px 0;
-    }
-
-    .signals-section h3 {
-      color: #424242;
-      margin-bottom: 20px;
-    }
-
-    .signals-list {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    .signal-item {
-      padding: 16px;
-      background-color: #f5f5f5;
-      border-radius: 8px;
-    }
-
-    .signal-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 8px;
-    }
-
-    .signal-header mat-icon {
-      color: #1976d2;
-    }
-
-    .signal-name {
-      flex: 1;
-      font-weight: 500;
-      color: #424242;
-    }
-
-    .signal-score {
-      font-weight: 600;
-      color: #1976d2;
-    }
-
-    .signal-progress {
-      height: 8px;
-      background-color: #e0e0e0;
-      border-radius: 4px;
-      overflow: hidden;
-      margin-bottom: 8px;
-    }
-
-    .progress-bar {
-      height: 100%;
-      background: linear-gradient(90deg, #1976d2 0%, #42a5f5 100%);
-      transition: width 0.5s ease-out;
-    }
-
-    .signal-detail {
-      font-size: 13px;
-      color: #666;
-      margin: 0;
-    }
-
-    .resume-info {
-      background-color: #f9f9f9;
-      padding: 16px;
-      border-radius: 8px;
-      margin-top: 24px;
-    }
-
-    .resume-info p {
-      margin: 8px 0;
-      font-size: 14px;
-      color: #424242;
-    }
+    .resume-info { background:#f9f9f9; padding:14px; border-radius:8px; }
+    .resume-info p { margin:6px 0; font-size:14px; color:#424242; }
   `]
 })
 export class ResultsDisplayComponent {
   @Input() result!: AssessmentResult;
 
-  getScoreClass(): string {
-    if (this.result.credibility_score >= 70) return 'high';
-    if (this.result.credibility_score >= 40) return 'medium';
-    return 'low';
-  }
-
   getLabelClass(): string {
-    const label = this.result.credibility_label.toLowerCase();
-    return label;
+    return this.result.credibility_label.toLowerCase();
   }
 
   getLabelIcon(): string {
-    switch (this.result.credibility_label) {
-      case 'Credible': return 'check_circle';
-      case 'Suspicious': return 'warning';
-      case 'False': return 'cancel';
-      default: return 'help';
-    }
+    const map: Record<string, string> = {
+      'Credible': 'check_circle', 'Suspicious': 'warning', 'False': 'cancel'
+    };
+    return map[this.result.credibility_label] ?? 'help';
+  }
+
+  getScore(cls: string): number {
+    const key = cls as keyof typeof this.result.class_scores;
+    return this.result.class_scores[key] ?? 0;
   }
 }

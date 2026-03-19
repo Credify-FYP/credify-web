@@ -8,10 +8,12 @@ import { NavbarComponent } from './components/navbar/navbar.component';
   imports: [RouterOutlet, NavbarComponent],
   template: `
     <app-navbar></app-navbar>
-    <router-outlet></router-outlet>
+    <main>
+      <router-outlet></router-outlet>
+    </main>
   `,
-  styles: []
+  styles: [`
+    main { min-height: calc(100vh - 64px); }
+  `]
 })
-export class AppComponent {
-  title = 'CrediFy - Resume Credibility Assessment';
-}
+export class AppComponent {}

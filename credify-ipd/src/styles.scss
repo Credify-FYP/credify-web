@@ -1,88 +1,254 @@
-/* src/styles.scss - Global Styles */
+/* ================================================================
+   CrediFy — Global Styles
+   Fonts loaded via index.html <link> tags (NOT @import here)
+   ================================================================ */
 
-@import '@angular/material/prebuilt-themes/indigo-pink.css';
+/* ── CSS Custom Properties ──────────────────────────────────── */
+:root {
+  /* Font stacks — Google Fonts load via <link> in index.html */
+  --font-display: 'Syne', 'Helvetica Neue', Arial, sans-serif;
+  --font-body:    'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:    'Space Mono', 'Fira Code', 'Courier New', monospace;
 
-* {
+  /* Colours */
+  --orange:        #FF6B1A;
+  --orange-bright: #FF8C42;
+  --orange-dim:    #CC5510;
+  --orange-glow:   rgba(255, 107, 26, 0.15);
+
+  /* Backgrounds */
+  --bg-base:   #0A0A0F;
+  --bg-panel:  #111118;
+  --bg-card:   #15151D;
+  --bg-card2:  #1C1C2A;
+
+  /* Borders */
+  --border:        rgba(255, 255, 255, 0.07);
+  --border-orange: rgba(255, 107, 26, 0.32);
+
+  /* Text */
+  --text-primary:   #EBEBF0;
+  --text-secondary: #8888A0;
+  --text-muted:     #505068;
+
+  /* Status colours */
+  --green:      #22C55E;
+  --yellow:     #EAB308;
+  --red:        #EF4444;
+  --green-bg:   rgba(34,  197, 94,  0.09);
+  --yellow-bg:  rgba(234, 179, 8,   0.09);
+  --red-bg:     rgba(239, 68,  68,  0.09);
+
+  /* Layout */
+  --radius:    10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow:    0 4px 24px rgba(0, 0, 0, 0.5);
+  --shadow-orange: 0 0 28px rgba(255, 107, 26, 0.22);
+}
+
+/* ── Reset ──────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  font-size: 16px;
+}
+
+/* ── Base body ──────────────────────────────────────────────── */
 body {
-  font-family: 'Roboto', 'Helvetica Neue', sans-serif;
-  background-color: #f5f5f5;
-  color: #333;
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  background-color: var(--bg-base);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-html, body {
-  height: 100%;
+/* ── Headings — always use display font ─────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+h1 { font-size: clamp(2.4rem, 6vw, 4rem); }
+h2 { font-size: clamp(1.6rem, 3vw, 2.1rem); }
+h3 { font-size: 1.15rem; font-weight: 700; }
+h4 { font-size: 1rem;    font-weight: 700; }
+
+/* ── Body text ──────────────────────────────────────────────── */
+p {
+  font-family: var(--font-body);
+  font-weight: 400;
+  font-size: 0.95rem;
+  line-height: 1.72;
+  color: var(--text-secondary);
 }
 
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
+strong, b {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
-::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+/* ── Monospace elements ─────────────────────────────────────── */
+code, pre, .mono {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+/* ── Links ──────────────────────────────────────────────────── */
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
-/* Material Design Overrides */
-.mat-mdc-card {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-  border-radius: 12px !important;
+/* ── Scrollbar ──────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg-base); }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--orange-dim); }
+
+/* ── Utility: gradient text ─────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(125deg, #FF8C42 0%, #FF6B1A 50%, #FF4500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-.mat-mdc-raised-button {
-  border-radius: 8px !important;
-  text-transform: none !important;
-  font-weight: 500 !important;
+/* ── Utility: fade-in animation ─────────────────────────────── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.mat-mdc-form-field {
-  font-size: 14px !important;
+.fade-in-up {
+  animation: fadeInUp 0.45s ease both;
 }
 
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
+/* ── Utility: pulse for status dot ─────────────────────────── */
+@keyframes pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.45); }
+  70%  { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+}
+
+/* ── Shared button: orange filled ───────────────────────────── */
+.orange-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 26px;
+  background: linear-gradient(135deg, #FF6B1A 0%, #CC5510 100%);
+  color: #FFFFFF;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: filter 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.12);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-orange);
   }
-  to {
-    opacity: 1;
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+    filter: brightness(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.42;
+    cursor: not-allowed;
+    transform: none;
   }
 }
 
-.fade-in {
-  animation: fadeIn 0.3s ease-in;
+/* ── Shared button: ghost/outlined ─────────────────────────── */
+.ghost-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  font-weight: 500;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease, background 0.18s ease;
+  text-decoration: none;
+
+  &:hover {
+    border-color: var(--orange);
+    color: var(--orange-bright);
+    background: var(--orange-glow);
+  }
 }
 
-/* Utility Classes */
-.text-center {
-  text-align: center;
+/* ── Angular Material overrides (dark theme) ────────────────── */
+.mat-mdc-form-field { width: 100%; }
+
+/* Outline border */
+.mat-mdc-outlined-text-field .mdc-notched-outline__leading,
+.mat-mdc-outlined-text-field .mdc-notched-outline__notch,
+.mat-mdc-outlined-text-field .mdc-notched-outline__trailing {
+  border-color: var(--border) !important;
+  transition: border-color 0.18s ease !important;
 }
 
-.mt-1 { margin-top: 8px; }
-.mt-2 { margin-top: 16px; }
-.mt-3 { margin-top: 24px; }
-.mt-4 { margin-top: 32px; }
+/* Hover + focus border → orange */
+.mat-mdc-form-field:hover .mdc-notched-outline__leading,
+.mat-mdc-form-field:hover .mdc-notched-outline__notch,
+.mat-mdc-form-field:hover .mdc-notched-outline__trailing,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: var(--orange) !important;
+}
 
-.mb-1 { margin-bottom: 8px; }
-.mb-2 { margin-bottom: 16px; }
-.mb-3 { margin-bottom: 24px; }
-.mb-4 { margin-bottom: 32px; }
+/* Field background */
+.mat-mdc-text-field-wrapper {
+  background: var(--bg-card2) !important;
+  border-radius: var(--radius) !important;
+}
 
-.p-1 { padding: 8px; }
-.p-2 { padding: 16px; }
-.p-3 { padding: 24px; }
-.p-4 { padding: 32px; }
+/* Input text */
+.mat-mdc-form-field-infix textarea,
+.mat-mdc-form-field-infix input {
+  color: var(--text-primary) !important;
+  font-family: var(--font-body) !important;
+  font-size: 0.9rem !important;
+  font-weight: 400 !important;
+}
+
+/* Label */
+.mat-mdc-floating-label {
+  color: var(--text-muted) !important;
+  font-family: var(--font-body) !important;
+}
+
+.mat-mdc-form-field.mat-focused .mat-mdc-floating-label,
+.mdc-text-field--focused:not(.mdc-text-field--disabled) .mdc-floating-label {
+  color: var(--orange) !important;
+}
