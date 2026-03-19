@@ -149,7 +149,7 @@ import { ResumeInput, AssessmentResult } from '../../models/resume.model';
             <div class="queue-item" *ngFor="let r of resumeInputs; let i = index">
               <span class="qi-num">#{{ i + 1 }}</span>
               <div class="qi-info">
-                <span class="qi-skills">{{ r.skills?.slice(0, 45) }}{{ (r.skills?.length ?? 0) > 45 ? '…' : '' }}</span>
+                <span class="qi-skills">{{ r.skills.slice(0, 45) }}{{ r.skills.length > 45 ? '…' : '' }}</span>
                 <span class="qi-meta">
                   {{ r.experience ? r.experience.slice(0, 30) + '…' : 'No experience' }}
                   · {{ r.projects ? 'Has projects' : 'No projects' }}
