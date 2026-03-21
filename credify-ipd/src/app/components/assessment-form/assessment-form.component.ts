@@ -1,10 +1,10 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component, AfterViewInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { ResumeInput, AssessmentResult } from '../../models/resume.model';
 
-declare const pdfjsLib: any; 
+declare const pdfjsLib: any;
 
 type TabType = 'text' | 'upload';
 type UploadState = 'idle' | 'loading' | 'done' | 'error';
@@ -548,7 +548,7 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
                 [ngClass]="
                   result.signal_breakdown.evidence_verification
                     .inflated_claims > 0
-                    ? 'sig-warn'
+                    ? 'sig-bad'
                     : result.signal_breakdown.evidence_verification.has_projects
                       ? 'sig-ok'
                       : 'sig-warn'
@@ -599,7 +599,9 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
                     "
                     >{{
                       result.signal_breakdown.evidence_verification
-                        .inflated_claims
+                        .inflated_claims > 0
+                        ? 'Detected ✕'
+                        : 'None ✓'
                     }}</span
                   >
                 </div>
@@ -610,7 +612,10 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
                 [ngClass]="
                   result.signal_breakdown.timeline_validation
                     .timeline_overlap ||
-                  result.signal_breakdown.timeline_validation.future_grad_year
+                  result.signal_breakdown.timeline_validation
+                    .future_grad_year ||
+                  result.signal_breakdown.timeline_validation
+                    .impossible_timeline
                     ? 'sig-bad'
                     : 'sig-ok'
                 "
@@ -668,6 +673,16 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
                     }}</span
                   >
                 </div>
+                <div
+                  class="sig-row"
+                  *ngIf="
+                    result.signal_breakdown.timeline_validation
+                      .impossible_timeline
+                  "
+                >
+                  <span>Impossible TL</span
+                  ><span class="sig-val bad">Yes ✕</span>
+                </div>
               </div>
 
               <div class="sig-card sig-neutral">
@@ -702,12 +717,38 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
                     )
                   }}</span>
                 </div>
+                <div
+                  class="sig-row"
+                  *ngIf="
+                    result.signal_breakdown.complexity_alignment
+                      .achieve_per_job !== undefined
+                  "
+                >
+                  <span>Achieve / Job</span
+                  ><span
+                    class="sig-val"
+                    [ngClass]="
+                      result.signal_breakdown.complexity_alignment
+                        .achieve_per_job >= 1
+                        ? 'ok'
+                        : 'neutral'
+                    "
+                    >{{
+                      result.signal_breakdown.complexity_alignment.achieve_per_job.toFixed(
+                        1
+                      )
+                    }}</span
+                  >
+                </div>
               </div>
 
               <div
                 class="sig-card"
                 [ngClass]="
-                  result.signal_breakdown.anomaly_detection.buzzword_count > 2
+                  result.signal_breakdown.anomaly_detection.buzzword_count >
+                    2 ||
+                  result.signal_breakdown.anomaly_detection.title_mismatch ||
+                  result.signal_breakdown.anomaly_detection.is_skill_overload
                     ? 'sig-warn'
                     : 'sig-ok'
                 "
@@ -750,6 +791,207 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
                     result.signal_breakdown.anomaly_detection.job_count
                   }}</span>
                 </div>
+                <div
+                  class="sig-row"
+                  *ngIf="
+                    result.signal_breakdown.anomaly_detection.title_mismatch !==
+                    undefined
+                  "
+                >
+                  <span>Title Match</span
+                  ><span
+                    class="sig-val"
+                    [ngClass]="
+                      result.signal_breakdown.anomaly_detection.title_mismatch
+                        ? 'bad'
+                        : 'ok'
+                    "
+                    >{{
+                      result.signal_breakdown.anomaly_detection.title_mismatch
+                        ? 'Mismatch ✕'
+                        : 'OK ✓'
+                    }}</span
+                  >
+                </div>
+              </div>
+            </div>
+
+            <!-- ── XAI EXPLANATION PANEL ─────────────────────────────── -->
+            <div class="xai-panel" *ngIf="result.explanation">
+              <!-- Overall verdict — typewriter effect -->
+              <div class="xai-verdict">
+                <div class="xai-verdict-icon">
+                  <svg
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <path d="M12 16v-4M12 8h.01" />
+                  </svg>
+                </div>
+                <div class="xai-verdict-body">
+                  <div class="xai-verdict-label">Why this result?</div>
+                  <div class="xai-verdict-text">
+                    {{ xaiTypedText
+                    }}<span
+                      class="xai-cursor"
+                      [class.xai-cursor-hidden]="xaiTypingDone"
+                      >▋</span
+                    >
+                  </div>
+                </div>
+                <div
+                  class="xai-conf-badge"
+                  [ngClass]="'badge-' + result.credibility_label.toLowerCase()"
+                >
+                  {{ result.explanation.confidence_text }}
+                </div>
+              </div>
+
+              <!-- Strengths & Concerns — staggered fade in after typing done -->
+              <div class="xai-cols" *ngIf="xaiTypingDone">
+                <div
+                  class="xai-col"
+                  *ngIf="result.explanation.strengths.length > 0"
+                >
+                  <div class="xai-col-head strengths-head">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <path d="M9 12l2 2 4-4" />
+                      <circle cx="12" cy="12" r="10" />
+                    </svg>
+                    Strengths
+                  </div>
+                  <div
+                    class="xai-item"
+                    *ngFor="
+                      let s of result.explanation.strengths;
+                      let i = index
+                    "
+                    [class.xai-item-visible]="i < xaiItemsVisible"
+                  >
+                    <span class="xai-item-icon">{{ s.icon }}</span>
+                    <div>
+                      <div class="xai-item-signal">{{ s.signal }}</div>
+                      <div class="xai-item-text">{{ s.explanation }}</div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="xai-col"
+                  *ngIf="result.explanation.concerns.length > 0"
+                >
+                  <div class="xai-col-head concerns-head">
+                    <svg
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <path d="M12 9v2m0 4h.01" />
+                      <path
+                        d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                      />
+                    </svg>
+                    Concerns
+                  </div>
+                  <div
+                    class="xai-item concern-item"
+                    *ngFor="let c of result.explanation.concerns; let i = index"
+                    [class.xai-item-visible]="i < xaiItemsVisible"
+                  >
+                    <span class="xai-item-icon">{{ c.icon }}</span>
+                    <div>
+                      <div class="xai-item-signal">{{ c.signal }}</div>
+                      <div class="xai-item-text">{{ c.explanation }}</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SHAP chart — slides in after items done -->
+              <div
+                class="xai-chart"
+                *ngIf="
+                  xaiChartVisible && result.explanation.top_factors.length > 0
+                "
+              >
+                <div class="xai-chart-title">
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                  </svg>
+                  SHAP Feature Impact
+                  <span class="xai-method">{{
+                    result.explanation.explanation_method
+                  }}</span>
+                </div>
+                <div
+                  class="shap-row"
+                  *ngFor="
+                    let f of result.explanation.top_factors;
+                    let i = index
+                  "
+                  [class.shap-row-visible]="xaiChartVisible"
+                  [style.animation-delay.ms]="i * 80"
+                >
+                  <div class="shap-label">{{ f.feature }}</div>
+                  <div class="shap-bars">
+                    <div
+                      class="shap-bar"
+                      [ngClass]="
+                        f.direction === 'positive' ? 'shap-pos' : 'shap-neg'
+                      "
+                      [style.width.%]="getShapWidth(f.shap)"
+                    ></div>
+                  </div>
+                  <div
+                    class="shap-score"
+                    [ngClass]="
+                      f.direction === 'positive'
+                        ? 'shap-pos-txt'
+                        : 'shap-neg-txt'
+                    "
+                  >
+                    {{ f.shap > 0 ? '+' : '' }}{{ f.shap.toFixed(3) }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="xai-footer" *ngIf="xaiChartVisible">
+                <svg
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"
+                  />
+                  <polyline points="13 2 13 9 20 9" />
+                </svg>
+                Powered by SHAP TreeExplainer · Random Forest · CAD-S v7 (10,100
+                records)
               </div>
             </div>
 
@@ -767,7 +1009,41 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
               </svg>
               Assessed
               {{ result.timestamp | date: 'MMM d, y · h:mm a' }} &nbsp;·&nbsp;
-              Random Forest &nbsp;·&nbsp; 91.74%
+              Random Forest &nbsp;·&nbsp; SHAP XAI
+
+              <button
+                class="download-btn"
+                (click)="downloadReport()"
+                [disabled]="downloadingReport"
+              >
+                <svg
+                  *ngIf="!downloadingReport"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" y1="15" x2="12" y2="3" />
+                </svg>
+                <svg
+                  *ngIf="downloadingReport"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="spin"
+                >
+                  <circle cx="12" cy="12" r="10" opacity="0.25" />
+                  <path d="M12 2a10 10 0 0110 10" />
+                </svg>
+                {{ downloadingReport ? 'Generating...' : 'Download Report' }}
+              </button>
             </div>
           </div>
         </div>
@@ -1466,10 +1742,330 @@ type UploadState = 'idle' | 'loading' | 'done' | 'error';
         color: var(--text-muted);
         padding: 7px 0;
       }
+
+      /* ── XAI Panel ─────────────────────────────────────────────────────────── */
+      .xai-panel {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Verdict row */
+      .xai-verdict {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .xai-verdict-icon {
+        width: 30px;
+        height: 30px;
+        background: rgba(99, 102, 241, 0.12);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #818cf8;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+      .xai-verdict-body {
+        flex: 1;
+        min-width: 0;
+      }
+      .xai-verdict-label {
+        font-size: 0.68rem;
+        font-family: 'Space Mono', monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 4px;
+        font-weight: 700;
+      }
+      .xai-verdict-text {
+        font-size: 0.82rem;
+        color: var(--text-secondary);
+        line-height: 1.55;
+      }
+      .xai-conf-badge {
+        flex-shrink: 0;
+        font-size: 0.67rem;
+        font-weight: 700;
+        padding: 4px 9px;
+        border-radius: 20px;
+        border: 1px solid;
+        white-space: nowrap;
+        font-family: 'Space Mono', monospace;
+        &.badge-credible {
+          background: var(--green-bg);
+          border-color: rgba(34, 197, 94, 0.3);
+          color: var(--green);
+        }
+        &.badge-suspicious {
+          background: var(--yellow-bg);
+          border-color: rgba(234, 179, 8, 0.3);
+          color: var(--yellow);
+        }
+        &.badge-false {
+          background: var(--red-bg);
+          border-color: rgba(239, 68, 68, 0.3);
+          color: var(--red);
+        }
+      }
+
+      /* Strengths / Concerns columns */
+      .xai-cols {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+        border-bottom: 1px solid var(--border);
+        &:has(.xai-col:only-child) {
+          grid-template-columns: 1fr;
+        }
+      }
+      @media (max-width: 600px) {
+        .xai-cols {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .xai-col {
+        padding: 14px;
+        &:first-child:not(:last-child) {
+          border-right: 1px solid var(--border);
+        }
+      }
+      .xai-col-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        margin-bottom: 10px;
+        font-family: 'Space Mono', monospace;
+        &.strengths-head {
+          color: var(--green);
+          svg {
+            color: var(--green);
+          }
+        }
+        &.concerns-head {
+          color: var(--yellow);
+          svg {
+            color: var(--yellow);
+          }
+        }
+      }
+      .concern-item .xai-item-signal {
+        color: var(--yellow);
+      }
+      .xai-item-icon {
+        font-size: 0.9rem;
+        flex-shrink: 0;
+        margin-top: 1px;
+      }
+      .xai-item-signal {
+        font-size: 0.76rem;
+        font-weight: 700;
+        color: var(--green);
+        margin-bottom: 2px;
+      }
+      .xai-item-text {
+        font-size: 0.74rem;
+        color: var(--text-muted);
+        line-height: 1.5;
+      }
+
+      /* SHAP chart */
+      .xai-chart {
+        padding: 14px;
+        border-bottom: 1px solid var(--border);
+      }
+      .xai-chart-title {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.68rem;
+        font-family: 'Space Mono', monospace;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+      .xai-method {
+        margin-left: auto;
+        font-size: 0.62rem;
+        opacity: 0.6;
+        font-weight: 400;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .shap-label {
+        font-size: 0.73rem;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .shap-bars {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 4px;
+        overflow: hidden;
+      }
+      .shap-bar {
+        height: 100%;
+        border-radius: 4px;
+        min-width: 3px;
+        transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        &.shap-pos {
+          background: linear-gradient(90deg, #16a34a, #22c55e);
+        }
+        &.shap-neg {
+          background: linear-gradient(90deg, #b91c1c, #ef4444);
+        }
+      }
+      .shap-score {
+        font-family: 'Space Mono', monospace;
+        font-size: 0.67rem;
+        text-align: right;
+        font-weight: 700;
+        &.shap-pos-txt {
+          color: var(--green);
+        }
+        &.shap-neg-txt {
+          color: var(--red);
+        }
+      }
+
+      /* XAI footer */
+      .xai-footer {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 14px;
+        font-size: 0.66rem;
+        font-family: 'Space Mono', monospace;
+        color: rgba(255, 255, 255, 0.2);
+        background: rgba(255, 255, 255, 0.01);
+      }
+
+      /* Download button inside result footer */
+      .download-btn {
+        margin-left: auto;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: var(--text-secondary);
+        font-size: 0.72rem;
+        font-family: 'Space Mono', monospace;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.18s ease;
+        white-space: nowrap;
+        &:hover:not(:disabled) {
+          border-color: var(--orange);
+          color: var(--orange);
+          background: rgba(249, 115, 22, 0.06);
+        }
+        &:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .spin {
+        animation: spin 0.8s linear infinite;
+      }
+
+      /* ── Typewriter animations ── */
+      @keyframes blink {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0;
+        }
+      }
+      .xai-cursor {
+        display: inline-block;
+        color: #818cf8;
+        animation: blink 0.85s step-end infinite;
+        font-weight: 400;
+        margin-left: 1px;
+      }
+      .xai-cursor-hidden {
+        opacity: 0;
+        animation: none;
+      }
+
+      /* Items start invisible, fade+slide in */
+      .xai-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        &:last-child {
+          border-bottom: none;
+        }
+        opacity: 0;
+        transform: translateY(6px);
+        transition:
+          opacity 0.35s ease,
+          transform 0.35s ease;
+      }
+      .xai-item.xai-item-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      /* SHAP rows slide in from left */
+      @keyframes shap-slide-in {
+        from {
+          opacity: 0;
+          transform: translateX(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      .shap-row {
+        display: grid;
+        grid-template-columns: 140px 1fr 52px;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+        &:last-child {
+          margin-bottom: 0;
+        }
+        opacity: 0;
+      }
+      .shap-row.shap-row-visible {
+        animation: shap-slide-in 0.4s ease forwards;
+      }
     `,
   ],
 })
-export class AssessmentFormComponent implements AfterViewInit {
+export class AssessmentFormComponent implements AfterViewInit, OnDestroy {
   tab: TabType = 'text';
   resume: ResumeInput = {
     skills: '',
@@ -1484,6 +2080,17 @@ export class AssessmentFormComponent implements AfterViewInit {
   uploadState: UploadState = 'idle';
   uploadedFileName = '';
   uploadError = '';
+
+  // ── Typewriter XAI state ─────────────────────────────────────────────────
+  xaiTypedText = '';
+  xaiTypingDone = false;
+  xaiItemsVisible = 0;
+  xaiChartVisible = false;
+  private _typeTimer: any;
+  private _itemTimer: any;
+
+  // ── Report download state ────────────────────────────────────────────────
+  downloadingReport = false;
 
   constructor(private api: ApiService) {}
 
@@ -1500,6 +2107,12 @@ export class AssessmentFormComponent implements AfterViewInit {
       this.result.class_scores[cls as keyof typeof this.result.class_scores] ??
       0
     );
+  }
+
+  getShapWidth(shap: number): number {
+    // Scale SHAP values to % width for the bar chart
+    // Max realistic SHAP for this model is ~0.25, scale to 100%
+    return Math.min(100, (Math.abs(shap) / 0.25) * 100);
   }
 
   onDragOver(e: DragEvent) {
@@ -2100,10 +2713,17 @@ export class AssessmentFormComponent implements AfterViewInit {
     this.loading = true;
     this.error = null;
     this.result = null;
+    this._resetXai();
     this.api.assessResume(this.resume).subscribe({
       next: (res) => {
         this.result = res;
         this.loading = false;
+        if (res.explanation?.overall_verdict) {
+          this._startXaiAnimation(
+            res.explanation.overall_verdict,
+            res.explanation.strengths.length + res.explanation.concerns.length,
+          );
+        }
       },
       error: (err) => {
         this.error =
@@ -2114,12 +2734,95 @@ export class AssessmentFormComponent implements AfterViewInit {
     });
   }
 
+  // ── XAI typewriter engine ─────────────────────────────────────────────────
+
+  private _resetXai() {
+    clearTimeout(this._typeTimer);
+    clearTimeout(this._itemTimer);
+    this.xaiTypedText = '';
+    this.xaiTypingDone = false;
+    this.xaiItemsVisible = 0;
+    this.xaiChartVisible = false;
+  }
+
+  private _startXaiAnimation(verdict: string, totalItems: number) {
+    // Phase 1: type the verdict text character by character
+    let idx = 0;
+    const typeChar = () => {
+      if (idx < verdict.length) {
+        this.xaiTypedText += verdict[idx++];
+        // Vary speed slightly — faster on spaces, slower on punctuation
+        const ch = verdict[idx - 1];
+        const delay = ch === ' ' ? 18 : ch === '.' || ch === ',' ? 90 : 28;
+        this._typeTimer = setTimeout(typeChar, delay);
+      } else {
+        // Phase 2: cursor blinks once, then hide it and start item reveals
+        this.xaiTypingDone = false; // keep cursor visible briefly
+        this._typeTimer = setTimeout(() => {
+          this.xaiTypingDone = true; // hide cursor
+          this._revealItems(totalItems);
+        }, 500);
+      }
+    };
+    // Small initial pause before typing starts
+    this._typeTimer = setTimeout(typeChar, 300);
+  }
+
+  private _revealItems(total: number) {
+    // Phase 3: reveal each strength/concern item with staggered delay
+    if (this.xaiItemsVisible < total) {
+      this.xaiItemsVisible++;
+      this._itemTimer = setTimeout(
+        () => this._revealItems(total),
+        120, // 120ms between each item appearing
+      );
+    } else {
+      // Phase 4: after all items, show SHAP chart
+      this._itemTimer = setTimeout(() => {
+        this.xaiChartVisible = true;
+      }, 200);
+    }
+  }
+
+  // ── Report download ───────────────────────────────────────────────────────
+
+  downloadReport() {
+    if (!this.result || this.downloadingReport) return;
+    this.downloadingReport = true;
+
+    this.api.downloadReport(this.result, this.resume).subscribe({
+      next: (blob: Blob) => {
+        // Create an invisible anchor, trigger click, then remove it
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `credify_report_${this.result!.resume_id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.downloadingReport = false;
+      },
+      error: (err) => {
+        console.error('Report download failed:', err);
+        this.downloadingReport = false;
+        alert('Report generation failed. Make sure the backend is running.');
+      },
+    });
+  }
+
+  ngOnDestroy() {
+    clearTimeout(this._typeTimer);
+    clearTimeout(this._itemTimer);
+  }
+
   clearForm() {
     this.resume = { skills: '', experience: '', education: '', projects: '' };
     this.result = null;
     this.error = null;
     this.uploadState = 'idle';
     this.uploadedFileName = '';
+    this._resetXai();
   }
 
   loadSample(type: 'credible' | 'suspicious' | 'false') {
@@ -2128,17 +2831,17 @@ export class AssessmentFormComponent implements AfterViewInit {
         skills:
           'Python, Django, PostgreSQL, Docker, REST APIs, Git, AWS, Redis',
         experience:
-          'Software Engineer at TCS (Jan 2022 – Present). Developed Python microservices serving 50K users. | Junior Developer at Infosys (Jun 2020 – Dec 2021). Built REST APIs and unit test suites.',
+          'Software Engineer at TCS (Jan 2022 – Present). Developed Python microservices serving 50K daily users, reducing API latency by 35%. Led migration of 3 legacy services to Docker, improving deployment frequency by 200%. | Junior Developer at Infosys (Jun 2020 – Dec 2021). Built REST APIs and unit test suites increasing code coverage from 40% to 75%. Implemented caching layer reducing database load by 30%.',
         education:
           'B.Tech. Computer Science, VIT University Vellore (2016–2020) | GPA 3.7/4.0',
         projects:
-          'Python/React Analytics Dashboard: Real-time data visualisation. 20K users. 98% uptime.',
+          'Analytics Dashboard: Built real-time data visualisation platform serving 20K users with 98% uptime. Tech: Python, React, PostgreSQL, Redis | Inventory System: Developed warehouse management tool reducing stock discrepancy by 45%. Tech: Django, PostgreSQL, Docker',
       },
       suspicious: {
         skills:
           'Java, Spring Boot, Hibernate, MySQL, REST APIs, Git, Maven, JIRA',
         experience:
-          'Application Developer at IBM India (Feb 2022 – Present). Responsible for developing Java applications.',
+          'Application Developer at IBM India (Feb 2022 – Present). Responsible for developing Java applications using modern technologies. Collaborated with team members to deliver features on time. Participated in daily standups and sprint planning.',
         education: 'MCA, University of Mumbai (2017–2020)',
         projects: '',
       },
@@ -2146,7 +2849,7 @@ export class AssessmentFormComponent implements AfterViewInit {
         skills:
           'Python, Java, React, Node.js, AWS, Kubernetes, TensorFlow, Docker, Go, Blockchain, Web3, IoT',
         experience:
-          'VP Engineering at Infosys (Mar 2019 – Jan 2021). Platform serving 450M users. | Director at TCS (Feb 2019 – Dec 2020). Built services processing 50B records daily.',
+          'VP Engineering at Infosys (Mar 2019 – Jan 2021). Single-handedly built platform serving 450M users globally. | Director of Engineering at TCS (Feb 2019 – Dec 2020). Built services processing 50B records daily.',
         education: 'B.E. Computer Science, IIT Bombay (2022–2027)',
         projects: 'Python/React Platform: 200M users. 450% growth at launch.',
       },

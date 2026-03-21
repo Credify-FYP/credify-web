@@ -1,14 +1,18 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { ResumeInput, AssessmentResult, BatchResponse } from '../models/resume.model';
+import {
+  ResumeInput,
+  AssessmentResult,
+  BatchResponse,
+} from '../models/resume.model';
 
 export interface PdfExtractResult {
-  skills:     string;
+  skills: string;
   experience: string;
-  education:  string;
-  projects:   string;
-  filename:   string;
+  education: string;
+  projects: string;
+  filename: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -26,7 +30,9 @@ export class ApiService {
   }
 
   assessBatch(resumes: ResumeInput[]): Observable<BatchResponse> {
-    return this.http.post<BatchResponse>(`${this.baseUrl}/assess/batch`, { resumes });
+    return this.http.post<BatchResponse>(`${this.baseUrl}/assess/batch`, {
+      resumes,
+    });
   }
 
   getStatistics(): Observable<any> {
@@ -38,6 +44,17 @@ export class ApiService {
   }
 
   extractPdf(formData: FormData): Observable<PdfExtractResult> {
-    return this.http.post<PdfExtractResult>(`${this.baseUrl}/extract-pdf`, formData);
+    return this.http.post<PdfExtractResult>(
+      `${this.baseUrl}/extract-pdf`,
+      formData,
+    );
+  }
+
+  downloadReport(assessment: any, resume: any): Observable<Blob> {
+    return this.http.post(
+      `${this.baseUrl}/report`,
+      { assessment, resume },
+      { responseType: 'blob' },
+    );
   }
 }
