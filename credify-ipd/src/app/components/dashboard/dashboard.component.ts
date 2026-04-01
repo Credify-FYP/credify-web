@@ -48,12 +48,12 @@ import { ApiService } from '../../services/api.service';
 
         <div class="hero-stats fade-in-up" style="animation-delay:0.18s">
           <div class="stat-item">
-            <span class="stat-num">91.74<span class="stat-unit">%</span></span>
+            <span class="stat-num">79.11<span class="stat-unit">%</span></span>
             <span class="stat-label">Model Accuracy</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
-            <span class="stat-num">7,830</span>
+            <span class="stat-num">10,100</span>
             <span class="stat-label">Training Resumes</span>
           </div>
           <div class="stat-divider"></div>
@@ -139,7 +139,7 @@ import { ApiService } from '../../services/api.service';
             <div class="section-label">MODEL INFO</div>
             <h2 class="model-title">Random Forest Classifier</h2>
             <p class="model-desc">
-              Trained on CAD-S Realistic v5 — 7,830 resumes with fully shared vocabulary
+              Trained on CAD-S v7 Production — 10,100 resumes with fully shared vocabulary
               and number ranges across all label classes, eliminating data leakage.
               Stratified 70/15/15 train/val/test split with no test-set contamination.
             </p>
