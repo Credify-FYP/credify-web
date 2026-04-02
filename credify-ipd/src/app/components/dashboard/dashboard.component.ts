@@ -32,7 +32,7 @@ import { ApiService } from '../../services/api.service';
           <p class="hero-sub">
             CrediFy uses <strong>Multi-Signal Consistency Analysis (MSCA)</strong> to assess
             resumes across four independent signal dimensions — trained on
-            <strong>7,830&nbsp;labelled resumes</strong> with genuine structural fraud patterns.
+            <strong>10,100&nbsp;labelled resumes</strong> with genuine structural fraud patterns.
           </p>
           <div class="hero-actions">
             <a routerLink="/assess" class="orange-btn hero-cta">
